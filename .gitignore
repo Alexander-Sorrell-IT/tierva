@@ -1,2 +1,15 @@
 .DS_Store
 *.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Foundry build artifacts (lib/ IS committed so `forge test` works on clone)
+contracts/out/
+contracts/cache/
+
+# data + secrets
+data_cache/
+.env
