@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tierva — see your land</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root { --bg:#0c1116; --panel:#141c24; --ink:#e8eef3; --muted:#8aa0b2; --acc:#4ade80; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; height:100%; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  #app { display:flex; height:100%; }
+  #map { flex:1; }
+  #side { width:360px; background:var(--panel); padding:18px; overflow-y:auto; }
+  h1 { font-size:18px; margin:0 0 2px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:14px; }
+  #search { display:flex; gap:6px; margin-bottom:12px; }
+  #q { flex:1; padding:8px; border-radius:8px; border:1px solid #26323d; background:#0e151b; color:var(--ink); }
+  button { padding:8px 12px; border:0; border-radius:8px; background:var(--acc); color:#06210f; font-weight:600; cursor:pointer; }
+  .hint { color:var(--muted); font-size:12px; margin:8px 0 14px; }
+  .card { background:#0e151b; border:1px solid #1e2832; border-radius:10px; padding:12px; margin-bottom:10px; }
+  .metric { display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; }
+  .metric .k { color:var(--muted); font-size:13px; }
+  .metric .v { font-size:18px; font-weight:600; }
+  .metric .v small { color:var(--muted); font-weight:400; font-size:11px; }
+  .badge { display:inline-block; font-size:10px; color:var(--acc); border:1px solid #224d33; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  .note { color:var(--muted); font-size:11px; line-height:1.5; margin-top:8px; }
+  #status { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="side">
+    <h1>Tierva <span class="badge">see your land</span></h1>
+    <div class="sub">Click anywhere, or search a place. The satellites tell you about that land — live.</div>
+    <div id="search">
+      <input id="q" placeholder="Search a place (e.g. Fresno, CA)"/>
+      <button onclick="geocode()">Go</button>
+    </div>
+    <div class="hint">Tip: click the map to drop a pin on any parcel on Earth.</div>
+    <div id="status">Pick a spot to begin.</div>
+    <div id="readout"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([36.60, -119.70], 12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap, &copy; CARTO', maxZoom: 19
+}).addTo(map);
+let marker = null;
+
+map.on('click', e => lookup(e.latlng.lat, e.latlng.lng));
+
+async function geocode() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  setStatus('Searching…');
+  const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+  const j = await r.json();
+  if (!j.length) { setStatus('Place not found.'); return; }
+  const lat = parseFloat(j[0].lat), lon = parseFloat(j[0].lon);
+  map.setView([lat, lon], 14);
+  lookup(lat, lon);
+}
+
+async function lookup(lat, lon) {
+  if (marker) marker.remove();
+  marker = L.marker([lat, lon]).addTo(map);
+  document.getElementById('readout').innerHTML = '';
+  setStatus(`Reading the land at ${lat.toFixed(4)}, ${lon.toFixed(4)} … (a few seconds — live satellite pull)`);
+  try {
+    const r = await fetch(`/api/parcel?lat=${lat}&lon=${lon}`);
+    const d = await r.json();
+    if (d.error) { setStatus('Error: ' + d.error); return; }
+    render(d);
+  } catch (e) { setStatus('Request failed: ' + e); }
+}
+
+function metric(k, v, sub) {
+  return `<div class="metric"><span class="k">${k}</span><span class="v">${v}${sub ? ' <small>'+sub+'</small>' : ''}</span></div>`;
+}
+function fmt(x, d=2) { return (x === null || x === undefined) ? '—' : (typeof x === 'number' ? x.toFixed(d) : x); }
+
+function render(d) {
+  setStatus(`Your land at ${d.lat.toFixed(4)}, ${d.lon.toFixed(4)} · pulled in ${d.seconds}s`);
+  let html = `<div class="card">`;
+  html += metric('Greenness (NDVI)', fmt(d.ndvi, 3), d.ndvi_date ? ('Sentinel-2 · ' + d.ndvi_date) : '');
+  html += metric('Radar VV', fmt(d.vv_db, 1) + ' dB', d.sar_date ? ('Sentinel-1 · ' + d.sar_date) : '');
+  html += metric('Radar VH', fmt(d.vh_db, 1) + ' dB', '');
+  html += metric('Land cover', d.landcover_label || '—', d.worldcover_year ? ('WorldCover · ' + d.worldcover_year) : '');
+  html += metric('Cropland', d.cropland === null ? '—' : (d.cropland ? 'Yes' : 'No'),
+                 d.cropland_frac != null ? ((d.cropland_frac*100).toFixed(0) + '% of parcel') : '');
+  html += `</div>`;
+  html += `<div class="note"><b>Parcel-true (10 m):</b> greenness, radar, land cover — these resolve your actual parcel. ` +
+          `Soil moisture, rainfall and groundwater are region-only and aren't shown at this zoom. ${d.honesty ? d.honesty.note : ''}</div>`;
+  document.getElementById('readout').innerHTML = html;
+}
+function setStatus(s) { document.getElementById('status').textContent = s; }
+</script>
+</body>
+</html>
