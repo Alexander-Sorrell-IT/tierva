@@ -85,12 +85,27 @@ the prescription** — a "your land is doomed" forecast with no "so do this" is 
 > satellite embeddings + your land's real history into one downscaled, plain-language, per-farm answer no expert
 > portal delivers. See [RESEARCH.md](RESEARCH.md) §2–3.
 
-### The giving / auto-relief layer (rides on all three)
-L1 users **discover** farmers in need and see the live satellite data justifying it. Donors fund a pool
-earmarked to a farmer/region. When Pacto's satellite consensus confirms drought, the contract **auto-releases**
-the gift to the farmer's mobile money. Framed as **anticipatory cash transfer / forecast-based financing**
-(WFP/IFRC lane) — *not* insurance (which needs a license/underwriter). Radical transparency: **the donor watches
-the exact data that fires the payout** — something no charity offers. See [RESEARCH.md](RESEARCH.md) §6.
+### The giving / auto-relief layer (rides on all three) — **global, two modes, one honest rail**
+The mission of **Pacto** is bigger than drought and bigger than Honduras: let anyone, anywhere fund support for
+**poor farmers and poor people in general, worldwide** — every gift auditable, no middleman taking a cut, the
+money reaching the person instead of an institution. Pacto Seco (drought auto-pay) is **one flow, not the ceiling.**
+Two giving modes run on the **same transparent, no-skim rails:**
+
+- **Mode 1 — Event-triggered (the proven kernel).** Donors fund a pool earmarked to a farmer/region. When open-data
+  consensus confirms a real-world shock — drought (NDVI + rainfall), flood (SAR), frost/heat (temperature) — the
+  contract **auto-releases** the gift to the recipient's mobile money. No human in the loop. Framed as
+  **anticipatory cash transfer / forecast-based financing** (WFP/IFRC lane) — *not* insurance (which needs a
+  license/underwriter). Radical transparency: **the donor watches the exact satellite data that fires the payout** —
+  something no charity offers.
+
+- **Mode 2 — Direct / needs-based (the broadening).** Poverty has **no satellite trigger** — a satellite can't *see*
+  that a person is poor the way it sees a dry field. So supporting "poor people in general" needs a different
+  verification of *who* should receive, while keeping the same auditable, no-skim disbursement rails. The donor still
+  funds a verified recipient and can audit every transfer end-to-end; only the *trigger* differs (verified need
+  instead of a confirmed shock). **How a recipient is verified is the open design choice (see §7.4).**
+
+Both modes inherit the kernel's integrity: open inputs, recomputable by anyone, no trusted middleman, no skim.
+See [RESEARCH.md](RESEARCH.md) §6.
 
 ## 5. The verticals — one engine, many shocks
 
@@ -119,3 +134,9 @@ Full raise mechanics (two-track capital, instruments, funder list, regulatory sh
    Seco**. (Trademark + domain clearance still TODO before any spend.)
 3. **Premium-data business model** — what's free (the global spine), what's paid (parcel close-ups, all-weather
    SAR), who pays. See [RESEARCH.md](RESEARCH.md) §1.
+4. **Direct-giving verification (Mode 2 trigger)** — how to verify "a poor person" without a satellite signal, on
+   the same no-skim rails. Candidate paths: (a) **local-partner enrollment** — a trusted in-country org vets and
+   enrolls households (generalize the COPECO/SAG registry pattern Pacto Seco already uses, just not drought-gated);
+   (b) **ride existing program rails** — national transfer programs / NGO beneficiary lists that already vet who is
+   poor; (c) **proof-of-condition** — data-verifiable proxies (living in a mapped extreme-poverty zone, off-grid, no
+   formal income). *Alex to steer; not yet chosen.* (Added 2026-06-05.)
