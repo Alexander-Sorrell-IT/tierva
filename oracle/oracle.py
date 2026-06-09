@@ -64,11 +64,10 @@ reportDailyMulti — both reject the single-sensor January NDVI blip (a single
 sensor would have fired 2023-01-21). Precipitation is read from data_cache, so a
 run is fully offline (no CDS, no faucet, no testnet).
 
-A tierva-kernel-native provider (using
-/Users/broodierchip-m1air/Documents/Hackthon/tierva/kernel — consensus.py /
-climatology.py, the domain-agnostic port of this same rule) is the documented
-FOLLOW-UP: it would yield the same (dayIndex, [ints]) shape the pusher already
-consumes, so the pusher needs no change.
+A tierva-kernel-native provider (using the tierva `kernel` package —
+consensus.py / climatology.py, the domain-agnostic port of this same rule) is
+the documented FOLLOW-UP: it would yield the same (dayIndex, [ints]) shape the
+pusher already consumes, so the pusher needs no change.
 
 Usage (local anvil, account[1] = oracle):
   .venv/bin/python oracle.py \
@@ -315,13 +314,22 @@ def push_series(
 # 2. SERIES PROVIDER (off-chain half) — REAL cached Copernicus data.
 #    pacto_seco is imported LAZILY here so the pusher above stays dependency-free.
 # ===========================================================================
-# Absolute location of the proven pacto_seco project (env-overridable). We do NOT
-# derive this from __file__: oracle.py lives in tierva/oracle/, a different repo
-# from pacto-seco, so a relative parents[N] would resolve to the wrong place.
-_PACTO_SECO_ROOT = Path(
-    "/Users/broodierchip-m1air/Documents/Hackthon/taikai/projects/"
-    "copernicuslac-seguridad-alimentaria-2026/pacto-seco"
+# Location of the proven pacto_seco project. Resolution order (no machine-
+# specific absolute path baked in):
+#   1. env vars PACTO_SECO_SRC / PACTO_SECO_CACHE (point them anywhere), else
+#   2. PACTO_SECO_ROOT env var (the project root), else
+#   3. a repo-relative anchor derived from __file__.
+# oracle.py lives at tierva/oracle/oracle.py, and pacto-seco hangs off the SAME
+# workspace root (.../Hackthon) at taikai/projects/.../pacto-seco. So
+# parents[2] == .../Hackthon and the relative anchor resolves correctly on any
+# checkout that keeps that layout — no hardcoded /Users/... required.
+_WORKSPACE_ROOT = Path(__file__).resolve().parents[2]  # .../Hackthon
+_DEFAULT_PACTO_SECO_ROOT = (
+    _WORKSPACE_ROOT
+    / "taikai" / "projects"
+    / "copernicuslac-seguridad-alimentaria-2026" / "pacto-seco"
 )
+_PACTO_SECO_ROOT = Path(os.environ.get("PACTO_SECO_ROOT", str(_DEFAULT_PACTO_SECO_ROOT)))
 PACTO_SECO_SRC = Path(os.environ.get("PACTO_SECO_SRC", str(_PACTO_SECO_ROOT / "src")))
 PACTO_SECO_CACHE = Path(os.environ.get("PACTO_SECO_CACHE", str(_PACTO_SECO_ROOT / "data_cache")))
 

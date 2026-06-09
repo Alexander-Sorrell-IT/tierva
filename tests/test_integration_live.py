@@ -5,11 +5,10 @@ This is the PRIZE wiring proof: it shows the same parametric pipeline that backs
 the on-chain trigger runs on real satellite bytes, fires on a real drought, and
 does NOT fire on a real green/normal year.
 
-Run (Pacto Seco venv has pandas/numpy/rasterio/odc.stac/planetary_computer):
-  RUN_NETWORK_TESTS=1 \
-    /Users/broodierchip-m1air/Documents/Hackthon/taikai/projects/\
-copernicuslac-seguridad-alimentaria-2026/pacto-seco/.venv/bin/python \
-    /Users/broodierchip-m1air/Documents/Hackthon/tierva/tests/test_integration_live.py
+Run (use a venv with pandas/numpy/rasterio/odc.stac/planetary_computer, e.g. the
+Pacto Seco venv at <pacto-seco>/.venv):
+  RUN_NETWORK_TESTS=1 <PACTO_VENV>/bin/python <tierva>/tests/test_integration_live.py
+The cached data_cache location is auto-derived (or set PACTO_SECO_CACHE).
 
 NETWORK GATE (so CI can gate it)
 ================================
@@ -76,10 +75,17 @@ from kernel.consensus import apply_consensus_trigger, composite_signal
 
 # Pacto Seco data_cache holding the previously-loaded Sentinel-2 NDVI parquets
 # (output of ingest.sources.sentinel2.ndvi_timeseries) for the Honduras AOIs.
-DATA_CACHE = (
-    "/Users/broodierchip-m1air/Documents/Hackthon/taikai/projects/"
-    "copernicuslac-seguridad-alimentaria-2026/pacto-seco/data_cache"
+# Resolution: PACTO_SECO_CACHE env var (point it anywhere), else a repo-relative
+# anchor derived from __file__ — no machine-specific /Users/... path baked in.
+# This file lives at tierva/tests/, and pacto-seco hangs off the SAME workspace
+# root (.../Hackthon) at taikai/projects/.../pacto-seco, so parents[2] resolves
+# the cache correctly on any checkout that keeps that layout.
+_WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_DEFAULT_DATA_CACHE = os.path.join(
+    _WORKSPACE_ROOT, "taikai", "projects",
+    "copernicuslac-seguridad-alimentaria-2026", "pacto-seco", "data_cache",
 )
+DATA_CACHE = os.environ.get("PACTO_SECO_CACHE", _DEFAULT_DATA_CACHE)
 
 # Known-drought AOI: Concepcion de Maria, Honduras (the cleanest cached case).
 HONDURAS_AOI = "ConcepcióndeMaria"

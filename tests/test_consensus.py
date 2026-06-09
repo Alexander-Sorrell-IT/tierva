@@ -180,6 +180,66 @@ def test_multisensor_consensus_required():
     assert bool(out_two["triggered"].any()) is True
 
 
+def test_sub_consensus_row_does_not_reset_run():
+    """A sub-consensus row (1 of 2 sensors breaching) must NOT reset the run.
+
+    This is the contract-fidelity fix: the on-chain mechanism is that a scene
+    posted via reportDailyMulti with < min_sensors breaching REVERTS 'consensus
+    not met' with NO state change — it neither advances nor RESETS the run. A
+    kernel that resets on any non-qualifying row under-fires vs the contract.
+
+    Layout (min_sensors=2): both sensors breach at days [100,110,120]; a SINGLE
+    sensor breaches at the interleaved sub-consensus days [105,115].
+      * OLD (reset-on-any-non-breach): days 105/115 reset run_start, so the run
+        never spans 20 days -> NO fire (kernel under-fires).
+      * NEW (sub-consensus skipped): 105/115 are no-ops; the qualifying run
+        100->120 keeps gaps 10<=14, reaches confirmations 3, spans 20 -> FIRES.
+    The two implementations give OPPOSITE answers, so this locks the fix.
+    """
+    qual_days = [100, 110, 120]
+    sub_days = [105, 115]
+    all_days = sorted(qual_days + sub_days)
+    # ndvi breaches on every row; spi3 breaches only on the qualifying days, so
+    # the sub-consensus rows have exactly 1 sensor in breach (< min_sensors=2).
+    ndvi = [BREACH] * len(all_days)
+    spi3 = [BREACH if d in qual_days else SAFE for d in all_days]
+    df = pd.DataFrame({
+        "date": days_to_dates(all_days),
+        "ndvi_anomaly": ndvi,
+        "spi3": spi3,
+    })
+    out = apply_consensus_trigger(
+        df, sensors=["ndvi_anomaly", "spi3"], min_sensors=2, threshold=THR
+    )
+    assert bool(out["triggered"].any()) is True, (
+        "sub-consensus rows must be skipped (no reset), letting the qualifying "
+        f"run 100->120 fire; got confirmations={list(out['confirmations'])}"
+    )
+
+
+def test_genuine_nonbreach_row_still_resets_run():
+    """A genuine non-breach row (0 sensors breaching) must STILL reset the run.
+
+    The sub-consensus fix splits non-qualifying rows three ways; the 0-breach
+    case must keep resetting (the contract's reportDaily non-breaching path).
+    Same layout as above but the middle qualifying day is replaced by a row
+    where NEITHER sensor breaches, breaking the run -> NO fire.
+    """
+    days = [100, 110, 120]
+    df = pd.DataFrame({
+        "date": days_to_dates(days),
+        # day 110 has BOTH sensors safe -> 0 in breach -> reset (run breaks).
+        "ndvi_anomaly": [BREACH, SAFE, BREACH],
+        "spi3": [BREACH, SAFE, BREACH],
+    })
+    out = apply_consensus_trigger(
+        df, sensors=["ndvi_anomaly", "spi3"], min_sensors=2, threshold=THR
+    )
+    assert bool(out["triggered"].any()) is False, (
+        "a 0-breach row must reset the run; the broken run cannot span 20 days"
+    )
+
+
 def test_config_object_path():
     """ConsensusConfig dataclass drives the same outcome as keyword overrides."""
     days = list(range(100, 121))
