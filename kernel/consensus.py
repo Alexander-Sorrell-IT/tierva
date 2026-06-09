@@ -159,15 +159,33 @@ def apply_consensus_trigger(
 
     A row qualifies (is a "breach" scene) when >= min_sensors agree
     (each anomaly breaches `threshold` on the `direction` side). The contract's
-    firing predicate is replicated exactly:
+    firing predicate is replicated exactly — and, critically, so is its
+    THREE-WAY treatment of a row by how many sensors breach:
 
-      - On a qualifying row:
+      - QUALIFYING row (sensors_in_breach >= min_sensors):
           * start a FRESH run if there is none OR the gap since the previous
             qualifying row > max_gap_days -> run_start = date, confirmations = 1
           * otherwise -> confirmations += 1
           * FIRE iff (date - run_start).days >= persistence_days
                  AND confirmations >= min_confirmations
-      - On a non-qualifying row: reset run (run_start = None, confirmations = 0).
+      - SUB-CONSENSUS row (0 < sensors_in_breach < min_sensors):
+          * NO state change — the run is NOT reset and NOT advanced. This mirrors
+            the on-chain mechanism where a sub-consensus scene posted via
+            reportDailyMulti REVERTS "consensus not met" with no state change
+            (oracle.py header, "IMPORTANT (mechanism)"): it neither breaks nor
+            resets the run. A lone-sensor dip during an otherwise-quiet stretch
+            therefore does not, by itself, knock the contract's run back to zero.
+      - GENUINE NON-BREACH row (sensors_in_breach == 0):
+          * reset run (run_start = None, confirmations = 0). This is the
+            non-breaching reading the contract receives via reportDaily, which
+            DOES break the run.
+
+    Why the distinction matters (the audit finding): treating EVERY
+    non-qualifying row as a reset conflates a sub-consensus row (which the
+    contract ignores) with a true non-breach row (which the contract resets on).
+    That makes this kernel UNDER-fire relative to the contract — a backtest that
+    looks "safe" here could still fire on-chain. Splitting the two realigns the
+    off-chain simulator with the on-chain source of truth.
 
     Note the gap is measured against the previous QUALIFYING row (which is what
     `prev_date` tracks, since it only advances on qualifying rows) — this equals
@@ -210,6 +228,7 @@ def apply_consensus_trigger(
     confirmations = 0
     for i, row in df.reset_index(drop=True).iterrows():
         if row["breach"]:
+            # QUALIFYING row: >= min_sensors agree -> advance (or start) the run.
             if run_start is None or (row[date_col] - prev_date).days > max_gap_days:
                 run_start = row[date_col]
                 confirmations = 1
@@ -222,7 +241,16 @@ def apply_consensus_trigger(
                 and confirmations >= min_confirmations
             ):
                 triggered[i] = True
+        elif row["sensors_in_breach"] > 0:
+            # SUB-CONSENSUS row: at least one sensor breached but fewer than
+            # min_sensors. The contract REVERTS such a scene with no state change
+            # (reportDailyMulti "consensus not met"), so the run is neither reset
+            # nor advanced here. We carry the current confirmations forward for
+            # honest display only (cosmetic; the run state is untouched).
+            confirmations_col[i] = confirmations
         else:
+            # GENUINE NON-BREACH row: zero sensors breach -> reset the run, the
+            # same way the contract's reportDaily non-breaching path does.
             run_start = None
             prev_date = None
             confirmations = 0

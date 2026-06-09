@@ -58,7 +58,16 @@ def ndvi_timeseries(
     scl = ds["SCL"]
     good = ~scl.isin(list(SCL_BAD))
 
-    ndvi = (nir - red) / (nir + red)
+    # Mask BEFORE the division (mask-then-divide), matching ingest/parcel.py:
+    #   * nodata is 0 on the reflectance bands -> drop non-positive pixels to NaN
+    #     so they cannot reach the divide.
+    #   * guard the denominator: where (nir+red) is ~0 the ratio is undefined, so
+    #     NaN it out rather than letting inf/NaN survive the later .where(good).
+    # Using xarray .where() (not np.where) preserves dims/coords on the DataArray.
+    red = red.where(red > 0)
+    nir = nir.where(nir > 0)
+    denom = nir + red
+    ndvi = (nir - red) / denom.where(denom != 0)
     ndvi = ndvi.where(good)
 
     # spatial-mean per time step
