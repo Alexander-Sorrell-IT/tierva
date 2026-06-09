@@ -384,12 +384,10 @@
   <div class="section-label">Early Access</div>
   <h2>Be the first to see<br/>your land.</h2>
   <p>Tierva is in active development. Join the waitlist for early access to the L1 map demo — point at your land and see what the satellites know.</p>
-  <form id="waitlist-form" action="https://formsubmit.co/alexander.sorrell.it@gmail.com" method="POST"
-        style="display:flex;gap:10px;max-width:420px;margin:0 auto;">
-    <input type="hidden" name="_subject" value="Tierva Waitlist Signup"/>
-    <input type="hidden" name="_captcha" value="false"/>
-    <input type="hidden" name="_next" value="https://alexander-sorrell-it.github.io/tierva/?joined=1"/>
-    <input id="email-input" type="email" name="email" placeholder="your@email.com" required
+  <form id="waitlist-form" action="https://us1.list-manage.com/subscribe/post?u=72ac3a0d5465b90913b489355&amp;id=027746e027" method="POST"
+        target="_blank" style="display:flex;gap:10px;max-width:420px;margin:0 auto;">
+    <input type="hidden" name="b_72ac3a0d5465b90913b489355_027746e027" value=""/>
+    <input id="email-input" type="email" name="EMAIL" placeholder="your@email.com" required
       style="flex:1;padding:13px 16px;border-radius:10px;border:1px solid var(--border);
              background:var(--panel);color:var(--ink);font-size:15px;outline:none;"/>
     <button type="submit"
@@ -416,6 +414,12 @@
   if (params.get('joined') === '1') {
     document.getElementById('form-msg').textContent = '✓ You\'re on the list. We\'ll reach out soon.';
   }
+  document.getElementById('waitlist-form').addEventListener('submit', function() {
+    setTimeout(function() {
+      document.getElementById('form-msg').textContent = '✓ You\'re on the list. We\'ll reach out soon.';
+      document.getElementById('email-input').value = '';
+    }, 500);
+  });
 })();
 </script>
 </body>
